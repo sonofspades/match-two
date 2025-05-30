@@ -14,6 +14,10 @@
 
 #include <shaders/converter.hpp>
 
+#include "physics_debug.hpp"
+
+btCollisionWorld* world;
+
 auto main() -> int32_t
 {
     shaders::Converter::convert("../../resources/shaders", "./");
@@ -128,6 +132,49 @@ auto main() -> int32_t
 
     opengl::Commands::clear(0.5f, 0.5f, 0.5f);
 
+    constexpr auto tile_width_size  = 1.25f;
+    constexpr auto tile_height_size = 1.75f;
+
+    auto physics_debug = new PhysicsDebug;
+    const auto bt_world_configuration = new btDefaultCollisionConfiguration;
+
+    world = new btCollisionWorld(new btCollisionDispatcher(bt_world_configuration), new btDbvtBroadphase(), bt_world_configuration);
+    world->setDebugDrawer(physics_debug);
+
+    auto card_shape = new btBoxShape(btVector3(0.5f, 0.5f, 0.5f));
+
+    for (auto row = 0; row < 4; row++)
+    {
+        for (auto col = 0; col < 13; col++)
+        {
+            const auto x = -tile_width_size  * col;
+            const auto y = -tile_height_size * row;
+
+            btTransform transform;
+            transform.setIdentity();
+            transform.setOrigin(btVector3(x, y, 0.0f));
+
+            auto card_object = new btCollisionObject();
+            card_object->setCollisionShape(card_shape);
+            card_object->setWorldTransform(transform);
+
+            world->addCollisionObject(card_object);
+        }
+    }
+
+    world->debugDrawWorld();
+
+    opengl::Buffer debug_vbo;
+    debug_vbo.create();
+    debug_vbo.storage(core::buffer::make_data(physics_debug->debug_vertices()));
+
+    opengl::VertexArray debug_vao;
+    debug_vao.create();
+    debug_vao.attach_vertices(debug_vbo, sizeof(glm::vec3));
+    debug_vao.attribute(position_attribute);
+
+    glm::vec3 debug_color { 0.0f, 1.0f, 0.0f };
+
     while (!window_closed)
     {
         glfwPollEvents();
@@ -136,20 +183,29 @@ auto main() -> int32_t
 
         base_shader.bind();
 
+        material_ubo.update(core::buffer::make_data(&debug_color));
+
+        debug_vao.bind();
+
+        opengl::Commands::draw_vertices(opengl::constants::lines, physics_debug->debug_vertices().size());
+
+        material_ubo.update(core::buffer::make_data(&material_albedo));
+
         card_vao.bind();
 
-        for (auto row = 0; row < 13; row++)
+        for (auto row = 0; row < 4; row++)
         {
-            constexpr auto tile_size = 1.25f;
+            for (auto col = 0; col < 13; col++)
+            {
+                const auto x = tile_width_size  * col - 6.0f * tile_width_size;
+                const auto y = tile_height_size * row - 1.5f * tile_height_size;
 
-            const auto x = tile_size * row - 6.0f * tile_size;
-            const auto y = 0.0f;
+                model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
 
-            model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
+                transform_ubo.update(core::buffer::make_data(&model));
 
-            transform_ubo.update(core::buffer::make_data(&model));
-
-            opengl::Commands::draw_elements(opengl::constants::triangles, card_elements.size());
+                opengl::Commands::draw_elements(opengl::constants::triangles, card_elements.size());
+            }
         }
 
         glfwSwapBuffers(window);
