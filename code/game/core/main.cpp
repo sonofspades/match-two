@@ -18,6 +18,11 @@
 
 btCollisionWorld* world;
 
+glm::mat4 view;
+glm::mat4 proj;
+
+uint32_t cards[4][13] { };
+
 auto main() -> int32_t
 {
     shaders::Converter::convert("../../resources/shaders", "./");
@@ -25,6 +30,9 @@ auto main() -> int32_t
     constexpr auto window_width  = 1920;
     constexpr auto window_height = 1080;
     static    auto window_closed = false;
+
+    static auto cursor_x = 0.0f;
+    static auto cursor_y = 0.0f;
 
     if (glfwInit() != GLFW_TRUE)
     {
@@ -36,6 +44,38 @@ auto main() -> int32_t
     glfwSetWindowCloseCallback(window, []
     {
         window_closed = true;
+    });
+
+    glfwSetCursorPosCallback(window, [](const double x, const double y) -> void
+    {
+        cursor_x = x;
+        cursor_y = y;
+    });
+
+    glfwSetMouseButtonCallback(window, [](const int button, const int action, const int) -> void
+    {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        {
+            constexpr glm::vec4 viewport { 0.0f, 0.0f, window_width, window_height };
+
+            auto start = glm::unProject(glm::vec3(cursor_x, window_height - cursor_y, -1.0f), view, proj, viewport);
+            auto end   = glm::unProject(glm::vec3(cursor_x, window_height - cursor_y,  1.0f), view, proj, viewport);
+                 end   = start + glm::normalize(end - start) * 1000.0f;
+
+            const btVector3 from(start.x, start.y, start.z);
+            const btVector3   to(  end.x,   end.y,   end.z);
+
+            btCollisionWorld::ClosestRayResultCallback result(from, to);
+                                               world->rayTest(from, to, result);
+
+            if (result.hasHit())
+            {
+                const auto row = result.m_collisionObject->getUserIndex();
+                const auto col = result.m_collisionObject->getUserIndex2();
+
+                cards[row][col] = 1;
+            }
+        }
     });
 
     glfwMakeContextCurrent(window);
@@ -104,8 +144,8 @@ auto main() -> int32_t
 
     glm::vec3 material_albedo { 1.0f, 0.0f, 0.0f };
 
-    auto proj = glm::perspective(glm::radians(60.0f), static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
-    auto view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -8.0f));
+    proj = glm::perspective(glm::radians(60.0f), static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
+    view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -8.0f));
 
     const std::vector camera_uniforms
     {
@@ -141,14 +181,14 @@ auto main() -> int32_t
     world = new btCollisionWorld(new btCollisionDispatcher(bt_world_configuration), new btDbvtBroadphase(), bt_world_configuration);
     world->setDebugDrawer(physics_debug);
 
-    auto card_shape = new btBoxShape(btVector3(0.5f, 0.5f, 0.5f));
+    auto card_shape = new btBoxShape(btVector3(0.5f, 0.76f, 0.02f));
 
     for (auto row = 0; row < 4; row++)
     {
         for (auto col = 0; col < 13; col++)
         {
-            const auto x = -tile_width_size  * col;
-            const auto y = -tile_height_size * row;
+            const auto x = tile_width_size  * col - 6.0f * tile_width_size;
+            const auto y = tile_height_size * row - 1.5f * tile_height_size;
 
             btTransform transform;
             transform.setIdentity();
@@ -157,6 +197,9 @@ auto main() -> int32_t
             auto card_object = new btCollisionObject();
             card_object->setCollisionShape(card_shape);
             card_object->setWorldTransform(transform);
+
+            card_object->setUserIndex(row);
+            card_object->setUserIndex2(col);
 
             world->addCollisionObject(card_object);
         }
@@ -183,7 +226,10 @@ auto main() -> int32_t
 
         base_shader.bind();
 
-        material_ubo.update(core::buffer::make_data(&debug_color));
+        model = glm::mat4(1.0f);
+
+        transform_ubo.update(core::buffer::make_data(&model));
+         material_ubo.update(core::buffer::make_data(&debug_color));
 
         debug_vao.bind();
 
@@ -201,6 +247,11 @@ auto main() -> int32_t
                 const auto y = tile_height_size * row - 1.5f * tile_height_size;
 
                 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
+
+                if (cards[row][col] == 1)
+                {
+                    model = glm::rotate(model, glm::radians(static_cast<float>(glfwGetTime()) * 50.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                }
 
                 transform_ubo.update(core::buffer::make_data(&model));
 
