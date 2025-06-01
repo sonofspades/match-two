@@ -14,6 +14,7 @@
 
 #include <shaders/converter.hpp>
 
+#include "card.hpp"
 #include "physics_debug.hpp"
 
 btCollisionWorld* world;
@@ -21,7 +22,7 @@ btCollisionWorld* world;
 glm::mat4 view;
 glm::mat4 proj;
 
-uint32_t cards[4][13] { };
+card cards[4][13] { };
 
 auto main() -> int32_t
 {
@@ -73,7 +74,7 @@ auto main() -> int32_t
                 const auto row = result.m_collisionObject->getUserIndex();
                 const auto col = result.m_collisionObject->getUserIndex2();
 
-                cards[row][col] = 1;
+                cards[row][col].turned = true;
             }
         }
     });
@@ -172,6 +173,13 @@ auto main() -> int32_t
 
     opengl::Commands::clear(0.5f, 0.5f, 0.5f);
 
+    std::vector<glm::vec3> card_colors;
+
+    for (auto i = 0; i < 26; i++)
+    {
+        card_colors.emplace_back(glm::linearRand(glm::vec3(0.0f), glm::vec3(1.0f)));
+    }
+
     constexpr auto tile_width_size  = 1.25f;
     constexpr auto tile_height_size = 1.75f;
 
@@ -182,6 +190,8 @@ auto main() -> int32_t
     world->setDebugDrawer(physics_debug);
 
     auto card_shape = new btBoxShape(btVector3(0.5f, 0.76f, 0.02f));
+
+    //auto index { };
 
     for (auto row = 0; row < 4; row++)
     {
@@ -202,6 +212,8 @@ auto main() -> int32_t
             card_object->setUserIndex2(col);
 
             world->addCollisionObject(card_object);
+
+            //cards[row][col].color = card_colors[index];
         }
     }
 
@@ -218,9 +230,19 @@ auto main() -> int32_t
 
     glm::vec3 debug_color { 0.0f, 1.0f, 0.0f };
 
+    constexpr auto card_rotation_speed     = 90.0f;
+    constexpr auto card_rotation_max_angle = 180.0f;
+
+    auto starting_time = glfwGetTime();
+
     while (!window_closed)
     {
         glfwPollEvents();
+
+        auto current_time = glfwGetTime();
+
+        auto delta_time = current_time - starting_time;
+          starting_time = current_time;
 
         opengl::Commands::clear(opengl::constants::color_buffer | opengl::constants::depth_buffer);
 
@@ -235,22 +257,31 @@ auto main() -> int32_t
 
         opengl::Commands::draw_vertices(opengl::constants::lines, physics_debug->debug_vertices().size());
 
-        material_ubo.update(core::buffer::make_data(&material_albedo));
-
         card_vao.bind();
 
         for (auto row = 0; row < 4; row++)
         {
             for (auto col = 0; col < 13; col++)
             {
+                material_ubo.update(core::buffer::make_data(&material_albedo));
+
                 const auto x = tile_width_size  * col - 6.0f * tile_width_size;
                 const auto y = tile_height_size * row - 1.5f * tile_height_size;
 
                 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
 
-                if (cards[row][col] == 1)
+                if (auto& [angle, turned, color] = cards[row][col]; turned)
                 {
-                    model = glm::rotate(model, glm::radians(static_cast<float>(glfwGetTime()) * 50.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                    angle += delta_time * card_rotation_speed;
+
+                    auto a = glm::smoothstep(0.0f, card_rotation_max_angle, angle);
+
+                    if (a >= 0.5f)
+                    {
+                        material_ubo.update(core::buffer::make_data(&color));
+                    }
+
+                    model = glm::rotate(model, glm::radians(a * card_rotation_max_angle), glm::vec3(0.0f, 1.0f, 0.0f));
                 }
 
                 transform_ubo.update(core::buffer::make_data(&model));
