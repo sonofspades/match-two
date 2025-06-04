@@ -24,6 +24,8 @@ glm::mat4 proj;
 
 card cards[4][13] { };
 
+card* last_card { };
+
 auto main() -> int32_t
 {
     shaders::Converter::convert("../../resources/shaders", "./");
@@ -75,6 +77,22 @@ auto main() -> int32_t
                 const auto col = result.m_collisionObject->getUserIndex2();
 
                 cards[row][col].turned = true;
+
+                if (last_card != nullptr)
+                {
+                    if (last_card->type == cards[row][col].type)
+                    {
+                        last_card->flipped      = true;
+                        cards[row][col].flipped = true;
+
+                        last_card = nullptr;
+                    }
+                    // continue here
+                }
+                else
+                {
+                    last_card = &cards[row][col];
+                }
             }
         }
     });
@@ -145,8 +163,8 @@ auto main() -> int32_t
 
     glm::vec3 material_albedo { 1.0f, 0.0f, 0.0f };
 
-    proj = glm::perspective(glm::radians(60.0f), static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
-    view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -8.0f));
+    proj = glm::ortho(0.0f,  static_cast<float>(window_width), 0.0f, static_cast<float>(window_height), -1.0f, 1.0f);
+    view = glm::mat4(1.0f);
 
     const std::vector camera_uniforms
     {
@@ -171,7 +189,9 @@ auto main() -> int32_t
     opengl::Pipeline::enable(opengl::constants::depth_test);
     opengl::Pipeline::enable(opengl::constants::cull_face);
 
-    opengl::Commands::clear(0.5f, 0.5f, 0.5f);
+    opengl::Commands::clear(0.08627450980392157f, 0.3803921568627451f, 0.05490196f);
+
+    glm::vec3 card_background_color { 0.97647058f, 0.47843137254901963f, 0.0f };
 
     std::vector<glm::vec3> card_colors;
 
@@ -180,8 +200,8 @@ auto main() -> int32_t
         card_colors.emplace_back(glm::linearRand(glm::vec3(0.0f), glm::vec3(1.0f)));
     }
 
-    constexpr auto tile_width_size  = 1.25f;
-    constexpr auto tile_height_size = 1.75f;
+    constexpr auto tile_width_size  = 125.0f;
+    constexpr auto tile_height_size = 175.0f;
 
     auto physics_debug = new PhysicsDebug;
     const auto bt_world_configuration = new btDefaultCollisionConfiguration;
@@ -189,16 +209,19 @@ auto main() -> int32_t
     world = new btCollisionWorld(new btCollisionDispatcher(bt_world_configuration), new btDbvtBroadphase(), bt_world_configuration);
     world->setDebugDrawer(physics_debug);
 
-    auto card_shape = new btBoxShape(btVector3(0.5f, 0.76f, 0.02f));
+    auto card_shape = new btBoxShape(btVector3(50.0f, 76.0f, 0.2f));
 
-    //auto index { };
+    auto card_pairing = false;
+    auto card_type    = 0;
+
+    constexpr auto card_columns_count = 13;
 
     for (auto row = 0; row < 4; row++)
     {
-        for (auto col = 0; col < 13; col++)
+        for (auto col = 0; col < card_columns_count; col++)
         {
-            const auto x = tile_width_size  * col - 6.0f * tile_width_size;
-            const auto y = tile_height_size * row - 1.5f * tile_height_size;
+            const auto x = tile_width_size  * col - 6.0f * tile_width_size  + static_cast<float>(window_width)  / 2.0f;
+            const auto y = tile_height_size * row - 1.5f * tile_height_size + static_cast<float>(window_height) / 2.0f;
 
             btTransform transform;
             transform.setIdentity();
@@ -213,7 +236,18 @@ auto main() -> int32_t
 
             world->addCollisionObject(card_object);
 
-            //cards[row][col].color = card_colors[index];
+            cards[row][col].type  = card_type;
+            cards[row][col].color = card_colors[card_type];
+
+            if (card_pairing)
+            {
+                card_pairing = false;
+                card_type++;
+            }
+            else
+            {
+                card_pairing = true;
+            }
         }
     }
 
@@ -228,7 +262,7 @@ auto main() -> int32_t
     debug_vao.attach_vertices(debug_vbo, sizeof(glm::vec3));
     debug_vao.attribute(position_attribute);
 
-    glm::vec3 debug_color { 0.0f, 1.0f, 0.0f };
+    glm::vec3 debug_color { 0.0f, 0.0f, 1.0f };
 
     constexpr auto card_rotation_speed     = 90.0f;
     constexpr auto card_rotation_max_angle = 180.0f;
@@ -261,24 +295,32 @@ auto main() -> int32_t
 
         for (auto row = 0; row < 4; row++)
         {
-            for (auto col = 0; col < 13; col++)
+            for (auto col = 0; col < card_columns_count; col++)
             {
-                material_ubo.update(core::buffer::make_data(&material_albedo));
+                auto& card = cards[row][col];
 
-                const auto x = tile_width_size  * col - 6.0f * tile_width_size;
-                const auto y = tile_height_size * row - 1.5f * tile_height_size;
+                if (card.flipped && !card.turned)
+                {
+                    continue;
+                }
+
+                material_ubo.update(core::buffer::make_data(&card_background_color));
+
+                const auto x = tile_width_size  * col - 6.0f * tile_width_size  + static_cast<float>(window_width)  / 2.0f;
+                const auto y = tile_height_size * row - 1.5f * tile_height_size + static_cast<float>(window_height) / 2.0f;
 
                 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
+                model = glm::scale(model, glm::vec3(100.0f, 100.0f, 1.0f));
 
-                if (auto& [angle, turned, color] = cards[row][col]; turned)
+                if (card.turned)
                 {
-                    angle += delta_time * card_rotation_speed;
+                    card.angle += delta_time * card_rotation_speed;
 
-                    auto a = glm::smoothstep(0.0f, card_rotation_max_angle, angle);
+                    auto a = glm::smoothstep(0.0f, card_rotation_max_angle, card.angle);
 
                     if (a >= 0.5f)
                     {
-                        material_ubo.update(core::buffer::make_data(&color));
+                        material_ubo.update(core::buffer::make_data(&card.color));
                     }
 
                     model = glm::rotate(model, glm::radians(a * card_rotation_max_angle), glm::vec3(0.0f, 1.0f, 0.0f));
