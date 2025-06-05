@@ -200,8 +200,8 @@ auto main() -> int32_t
         card_colors.emplace_back(glm::linearRand(glm::vec3(0.0f), glm::vec3(1.0f)));
     }
 
-    constexpr auto tile_width_size  = 125.0f;
-    constexpr auto tile_height_size = 175.0f;
+    constexpr auto tile_width_size  = 145.5f;
+    constexpr auto tile_height_size = 220.0f;
 
     auto physics_debug = new PhysicsDebug;
     const auto bt_world_configuration = new btDefaultCollisionConfiguration;
@@ -267,6 +267,8 @@ auto main() -> int32_t
     constexpr auto card_rotation_speed     = 90.0f;
     constexpr auto card_rotation_max_angle = 180.0f;
 
+    constexpr auto card_scale = 135.0f;
+
     auto starting_time = glfwGetTime();
 
     while (!window_closed)
@@ -310,7 +312,7 @@ auto main() -> int32_t
                 const auto y = tile_height_size * row - 1.5f * tile_height_size + static_cast<float>(window_height) / 2.0f;
 
                 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
-                model = glm::scale(model, glm::vec3(100.0f, 100.0f, 1.0f));
+                model = glm::scale(model, glm::vec3(card_scale, card_scale, 1.0f));
 
                 if (card.turned)
                 {
