@@ -27,6 +27,7 @@ card cards[4][13] { };
 card* last_card { };
 
 static auto card_is_matching = false;
+static auto card_is_turning  = false;
 
 auto main() -> int32_t
 {
@@ -82,12 +83,13 @@ auto main() -> int32_t
 
                 auto& card = cards[row][col];
 
-                if (card.turned || card.turning || card.flipped)
+                if (card_is_turning || card.turned || card.turning || card.flipped)
                 {
                     return;
                 }
 
-                card.turning = true;
+                card.turning    = true;
+                card_is_turning = true;
 
                 if (last_card != nullptr)
                 {
@@ -274,7 +276,7 @@ auto main() -> int32_t
 
     glm::vec3 debug_color { 0.0f, 0.0f, 1.0f };
 
-    constexpr auto card_rotation_speed     = 90.0f;
+    constexpr auto card_rotation_speed     = 180.0f;
     constexpr auto card_rotation_max_angle = 180.0f;
 
     constexpr auto card_scale = 130.0f;
@@ -341,6 +343,8 @@ auto main() -> int32_t
                     {
                         card.turned  = true;
                         card.turning = false;
+
+                        card_is_turning = false;
 
                         if (card_is_matching)
                         {
