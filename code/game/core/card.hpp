@@ -3,7 +3,8 @@
 struct card
 {
     float angle { };
-    bool turned { };
+    bool turning { };
+    bool turned  { };
     bool flipped { };
 
     int32_t type { };

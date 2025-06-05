@@ -26,12 +26,14 @@ card cards[4][13] { };
 
 card* last_card { };
 
+static auto card_is_matching = false;
+
 auto main() -> int32_t
 {
     shaders::Converter::convert("../../resources/shaders", "./");
 
     constexpr auto window_width  = 1920;
-    constexpr auto window_height = 1080;
+    constexpr auto window_height = 980;
     static    auto window_closed = false;
 
     static auto cursor_x = 0.0f;
@@ -73,19 +75,27 @@ auto main() -> int32_t
 
             if (result.hasHit())
             {
+                std::cout << "hit" << std::endl;
+
                 const auto row = result.m_collisionObject->getUserIndex();
                 const auto col = result.m_collisionObject->getUserIndex2();
 
-                cards[row][col].turned = true;
+                auto& card = cards[row][col];
+
+                if (card.turned || card.turning || card.flipped)
+                {
+                    return;
+                }
+
+                card.turning = true;
 
                 if (last_card != nullptr)
                 {
                     if (last_card->type == cards[row][col].type)
                     {
-                        last_card->flipped      = true;
-                        cards[row][col].flipped = true;
+                        card_is_matching = true;
 
-                        last_card = nullptr;
+                        std::cout << "matching" << std::endl;
                     }
                     // continue here
                 }
@@ -201,7 +211,7 @@ auto main() -> int32_t
     }
 
     constexpr auto tile_width_size  = 145.5f;
-    constexpr auto tile_height_size = 220.0f;
+    constexpr auto tile_height_size = 212.0f;
 
     auto physics_debug = new PhysicsDebug;
     const auto bt_world_configuration = new btDefaultCollisionConfiguration;
@@ -209,7 +219,7 @@ auto main() -> int32_t
     world = new btCollisionWorld(new btCollisionDispatcher(bt_world_configuration), new btDbvtBroadphase(), bt_world_configuration);
     world->setDebugDrawer(physics_debug);
 
-    auto card_shape = new btBoxShape(btVector3(50.0f, 76.0f, 0.2f));
+    auto card_shape = new btBoxShape(btVector3(65.0f, 97.0f, 0.2f));
 
     auto card_pairing = false;
     auto card_type    = 0;
@@ -267,7 +277,7 @@ auto main() -> int32_t
     constexpr auto card_rotation_speed     = 90.0f;
     constexpr auto card_rotation_max_angle = 180.0f;
 
-    constexpr auto card_scale = 135.0f;
+    constexpr auto card_scale = 130.0f;
 
     auto starting_time = glfwGetTime();
 
@@ -301,7 +311,7 @@ auto main() -> int32_t
             {
                 auto& card = cards[row][col];
 
-                if (card.flipped && !card.turned)
+                if (card.flipped)
                 {
                     continue;
                 }
@@ -314,7 +324,7 @@ auto main() -> int32_t
                 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
                 model = glm::scale(model, glm::vec3(card_scale, card_scale, 1.0f));
 
-                if (card.turned)
+                if (card.turning)
                 {
                     card.angle += delta_time * card_rotation_speed;
 
@@ -326,6 +336,28 @@ auto main() -> int32_t
                     }
 
                     model = glm::rotate(model, glm::radians(a * card_rotation_max_angle), glm::vec3(0.0f, 1.0f, 0.0f));
+
+                    if (card.angle >= card_rotation_max_angle)
+                    {
+                        card.turned  = true;
+                        card.turning = false;
+
+                        if (card_is_matching)
+                        {
+                            card_is_matching = false;
+
+                            last_card->flipped      = true;
+                            cards[row][col].flipped = true;
+
+                            last_card = nullptr;
+
+                            std::cout << "matched" << std::endl;
+                        }
+                    }
+                }
+                else if (card.turned)
+                {
+                    material_ubo.update(core::buffer::make_data(&card.color));
                 }
 
                 transform_ubo.update(core::buffer::make_data(&model));
