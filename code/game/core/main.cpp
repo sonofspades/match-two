@@ -99,7 +99,15 @@ auto main() -> int32_t
 
                         std::cout << "matching" << std::endl;
                     }
-                    // continue here
+                    else
+                    {
+                        card_is_matching = false;
+
+                              card.reversing = true;
+                        last_card->reversing = true;
+
+                        std::cout << "not matching" << std::endl;
+                    }
                 }
                 else
                 {
@@ -348,14 +356,45 @@ auto main() -> int32_t
 
                         if (card_is_matching)
                         {
-                            card_is_matching = false;
+                            card_is_matching   = false;
 
-                            last_card->flipped      = true;
-                            cards[row][col].flipped = true;
+                            last_card->flipped = true;
+                            card.flipped       = true;
 
                             last_card = nullptr;
+                        }
+                    }
+                }
+                else if (card.reversing && !card_is_turning)
+                {
+                    card.angle -= delta_time * card_rotation_speed;
 
-                            std::cout << "matched" << std::endl;
+                    auto a = glm::smoothstep(0.0f, card_rotation_max_angle, card.angle);
+
+                    if (a <= 0.5f)
+                    {
+                        material_ubo.update(core::buffer::make_data(&card_background_color));
+                    }
+                    else
+                    {
+                        material_ubo.update(core::buffer::make_data(&card.color));
+                    }
+
+                    model = glm::rotate(model, glm::radians(a * card_rotation_max_angle), glm::vec3(0.0f, 1.0f, 0.0f));
+
+                    if (card.angle <= 0.0f)
+                    {
+                        std::cout << "reverse" << std::endl;
+
+                        card.turned       = false;
+                        card.reversing       = false;
+
+                        if (last_card != nullptr)
+                        {
+                            last_card->turned = false;
+                            last_card->reversing = false;
+
+                            last_card = nullptr;
                         }
                     }
                 }

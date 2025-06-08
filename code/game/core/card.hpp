@@ -6,6 +6,7 @@ struct card
     bool turning { };
     bool turned  { };
     bool flipped { };
+    bool reversing { };
 
     int32_t type { };
 
