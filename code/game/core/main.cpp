@@ -82,7 +82,7 @@ auto main() -> int32_t
 
                 auto& card = cards[row][col];
 
-                if (card_is_turning || card_is_reversing || card.turned || card.turning || card.flipped)
+                if (card_is_turning || card_is_reversing)
                 {
                     return;
                 }
@@ -308,10 +308,6 @@ auto main() -> int32_t
 
         transform_ubo.update(core::buffer::make_data(&model));
          material_ubo.update(core::buffer::make_data(&debug_color));
-
-        debug_vao.bind();
-
-        opengl::Commands::draw_vertices(opengl::constants::lines, physics_debug->debug_vertices().size());
 
         card_vao.bind();
 
