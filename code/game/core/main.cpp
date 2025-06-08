@@ -26,8 +26,9 @@ card cards[4][13] { };
 
 card* last_card { };
 
-static auto card_is_matching = false;
-static auto card_is_turning  = false;
+static auto card_is_matching  = false;
+static auto card_is_turning   = false;
+static auto card_is_reversing = false;
 
 auto main() -> int32_t
 {
@@ -76,14 +77,12 @@ auto main() -> int32_t
 
             if (result.hasHit())
             {
-                std::cout << "hit" << std::endl;
-
                 const auto row = result.m_collisionObject->getUserIndex();
                 const auto col = result.m_collisionObject->getUserIndex2();
 
                 auto& card = cards[row][col];
 
-                if (card_is_turning || card.turned || card.turning || card.flipped)
+                if (card_is_turning || card_is_reversing || card.turned || card.turning || card.flipped)
                 {
                     return;
                 }
@@ -102,6 +101,7 @@ auto main() -> int32_t
                     else
                     {
                         card_is_matching = false;
+                        card_is_reversing = true;
 
                               card.reversing = true;
                         last_card->reversing = true;
@@ -384,18 +384,18 @@ auto main() -> int32_t
 
                     if (card.angle <= 0.0f)
                     {
-                        std::cout << "reverse" << std::endl;
-
-                        card.turned       = false;
-                        card.reversing       = false;
+                        card.turned    = false;
+                        card.reversing = false;
 
                         if (last_card != nullptr)
                         {
-                            last_card->turned = false;
+                            last_card->turned    = false;
                             last_card->reversing = false;
 
                             last_card = nullptr;
                         }
+
+                        card_is_reversing = false;
                     }
                 }
                 else if (card.turned)
