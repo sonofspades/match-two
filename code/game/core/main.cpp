@@ -15,7 +15,6 @@
 #include <shaders/converter.hpp>
 
 #include "card.hpp"
-#include "physics_debug.hpp"
 
 btCollisionWorld* world;
 
@@ -223,11 +222,9 @@ auto main() -> int32_t
     constexpr auto tile_width_size  = 145.5f;
     constexpr auto tile_height_size = 212.0f;
 
-    auto physics_debug = new PhysicsDebug;
     const auto bt_world_configuration = new btDefaultCollisionConfiguration;
 
     world = new btCollisionWorld(new btCollisionDispatcher(bt_world_configuration), new btDbvtBroadphase(), bt_world_configuration);
-    world->setDebugDrawer(physics_debug);
 
     auto card_shape = new btBoxShape(btVector3(65.0f, 97.0f, 0.2f));
 
@@ -271,19 +268,6 @@ auto main() -> int32_t
         }
     }
 
-    world->debugDrawWorld();
-
-    opengl::Buffer debug_vbo;
-    debug_vbo.create();
-    debug_vbo.storage(core::buffer::make_data(physics_debug->debug_vertices()));
-
-    opengl::VertexArray debug_vao;
-    debug_vao.create();
-    debug_vao.attach_vertices(debug_vbo, sizeof(glm::vec3));
-    debug_vao.attribute(position_attribute);
-
-    glm::vec3 debug_color { 0.0f, 0.0f, 1.0f };
-
     constexpr auto card_rotation_speed     = 180.0f;
     constexpr auto card_rotation_max_angle = 180.0f;
 
@@ -303,11 +287,6 @@ auto main() -> int32_t
         opengl::Commands::clear(opengl::constants::color_buffer | opengl::constants::depth_buffer);
 
         base_shader.bind();
-
-        model = glm::mat4(1.0f);
-
-        transform_ubo.update(core::buffer::make_data(&model));
-         material_ubo.update(core::buffer::make_data(&debug_color));
 
         card_vao.bind();
 
