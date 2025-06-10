@@ -29,6 +29,8 @@ static auto card_is_matching  = false;
 static auto card_is_turning   = false;
 static auto card_is_reversing = false;
 
+static constexpr auto card_columns_count = 13;
+
 auto main() -> int32_t
 {
     shaders::Converter::convert("../../resources/shaders", "./");
@@ -58,6 +60,31 @@ auto main() -> int32_t
         cursor_y = y;
     });
 
+    glfwSetKeyCallback(window, [](const int key, const int, const int action, const int) -> void
+    {
+        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+        {
+            for (auto row = 0; row < 4; row++)
+            {
+                for (auto col = 0; col < card_columns_count; col++)
+                {
+                    auto& card = cards[row][col];
+
+                    card.turned    = false;
+                    card.turning   = false;
+                    card.reversing = false;
+                    card.flipped   = false;
+                    card.angle     = 0.0f;
+
+                    card_is_turning   = false;
+                    card_is_reversing = false;
+                    card_is_matching  = false;
+                    last_card         = nullptr;
+                }
+            }
+        }
+    });
+
     glfwSetMouseButtonCallback(window, [](const int button, const int action, const int) -> void
     {
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
@@ -81,7 +108,7 @@ auto main() -> int32_t
 
                 auto& card = cards[row][col];
 
-                if (card_is_turning || card_is_reversing)
+                if (card_is_turning || card_is_reversing || card.turned || card.turning || card.flipped)
                 {
                     return;
                 }
@@ -94,8 +121,6 @@ auto main() -> int32_t
                     if (last_card->type == cards[row][col].type)
                     {
                         card_is_matching = true;
-
-                        std::cout << "matching" << std::endl;
                     }
                     else
                     {
@@ -104,8 +129,6 @@ auto main() -> int32_t
 
                               card.reversing = true;
                         last_card->reversing = true;
-
-                        std::cout << "not matching" << std::endl;
                     }
                 }
                 else
@@ -231,8 +254,6 @@ auto main() -> int32_t
     auto card_pairing = false;
     auto card_type    = 0;
 
-    constexpr auto card_columns_count = 13;
-
     for (auto row = 0; row < 4; row++)
     {
         for (auto col = 0; col < card_columns_count; col++)
@@ -253,8 +274,7 @@ auto main() -> int32_t
 
             world->addCollisionObject(card_object);
 
-            cards[row][col].type  = card_type;
-            cards[row][col].color = card_colors[card_type];
+            cards[row][col].type = card_type;
 
             if (card_pairing)
             {
@@ -265,6 +285,32 @@ auto main() -> int32_t
             {
                 card_pairing = true;
             }
+        }
+    }
+
+    for (auto row = 0; row < 4; row++)
+    {
+        for (auto col = 0; col < card_columns_count; col++)
+        {
+            auto new_row = glm::linearRand(0, 3);
+            auto new_col = glm::linearRand(0, card_columns_count - 1);
+
+            auto&     card = cards[row][col];
+            auto& new_card = cards[new_row][new_col];
+
+            const auto type = card.type;
+                card.type = new_card.type;
+            new_card.type = type;
+        }
+    }
+
+    for (auto row = 0; row < 4; row++)
+    {
+        for (auto col = 0; col < card_columns_count; col++)
+        {
+            auto& card = cards[row][col];
+
+            card.color = card_colors[card.type];
         }
     }
 
