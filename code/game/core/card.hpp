@@ -3,7 +3,7 @@
 struct card
 {
     float angle { };
-    bool turning { };
+    bool turning { }; // TODO get rid of this multiple states - use the card_state enum
     bool turned  { };
     bool flipped { };
     bool reversing { };

@@ -21,7 +21,7 @@ btCollisionWorld* world;
 glm::mat4 view;
 glm::mat4 proj;
 
-card cards[4][13] { };
+card cards[4][13] { }; // TODO have a board class
 
 card* last_card { };
 
@@ -66,7 +66,7 @@ auto main() -> int32_t
         {
             for (auto row = 0; row < 4; row++)
             {
-                for (auto col = 0; col < card_columns_count; col++)
+                for (auto col = 0; col < card_columns_count; col++) // TODO reset the cards in the board class
                 {
                     auto& card = cards[row][col];
 
@@ -108,10 +108,12 @@ auto main() -> int32_t
 
                 auto& card = cards[row][col];
 
-                if (card_is_turning || card_is_reversing || card.turned || card.turning || card.flipped)
+                if (card_is_turning || card_is_reversing || card.turned || card.turning || card.flipped) // TODO have less checks with the current card states - maybe without the turned/turning
                 {
                     return;
                 }
+
+                // TODO refactor from here
 
                 card.turning    = true;
                 card_is_turning = true;
@@ -135,6 +137,8 @@ auto main() -> int32_t
                 {
                     last_card = &cards[row][col];
                 }
+
+                // TODO refactor to here
             }
         }
     });
@@ -159,7 +163,7 @@ auto main() -> int32_t
     base_shader.attach(base_shader_frag);
     base_shader.link();
 
-    Assimp::Importer card_importer;
+    Assimp::Importer card_importer; // TODO replace assimp with an obj loader
 
     std::vector<glm::vec3> card_vertices;
     std::vector<uint32_t>  card_elements;
@@ -186,7 +190,7 @@ auto main() -> int32_t
 
     constexpr core::vertex_array::attribute position_attribute { 0, 3, opengl::constants::float_type, 0 };
 
-    opengl::Buffer card_vbo;
+    opengl::Buffer card_vbo; // TODO replace with a Mesh class
     card_vbo.create();
     card_vbo.storage(core::buffer::make_data(card_vertices));
 
@@ -213,7 +217,7 @@ auto main() -> int32_t
         view, proj
     };
 
-    opengl::Buffer transform_ubo;
+    opengl::Buffer transform_ubo; // TODO have like an uniform buffer manager
     transform_ubo.create();
     transform_ubo.storage(core::buffer::make_data(&model), opengl::constants::dynamic_draw);
     transform_ubo.bind_base(opengl::constants::uniform_buffer, core::buffer::transform);
@@ -235,7 +239,7 @@ auto main() -> int32_t
 
     glm::vec3 card_background_color { 0.97647058f, 0.47843137254901963f, 0.0f };
 
-    std::vector<glm::vec3> card_colors;
+    std::vector<glm::vec3> card_colors; // TODO colors should not be that random
 
     for (auto i = 0; i < 26; i++)
     {
@@ -254,7 +258,7 @@ auto main() -> int32_t
     auto card_pairing = false;
     auto card_type    = 0;
 
-    for (auto row = 0; row < 4; row++)
+    for (auto row = 0; row < 4; row++) // TODO change this with a new collision system
     {
         for (auto col = 0; col < card_columns_count; col++)
         {
@@ -288,6 +292,8 @@ auto main() -> int32_t
         }
     }
 
+    // TODO merge this in to in board class from here
+
     for (auto row = 0; row < 4; row++)
     {
         for (auto col = 0; col < card_columns_count; col++)
@@ -314,6 +320,8 @@ auto main() -> int32_t
         }
     }
 
+    // TODO merge this in to in board class to here
+
     constexpr auto card_rotation_speed     = 180.0f;
     constexpr auto card_rotation_max_angle = 180.0f;
 
@@ -325,7 +333,7 @@ auto main() -> int32_t
     {
         glfwPollEvents();
 
-        auto current_time = glfwGetTime();
+        auto current_time = glfwGetTime(); // TODO use time Time.delta_time
 
         auto delta_time = current_time - starting_time;
           starting_time = current_time;
@@ -354,6 +362,9 @@ auto main() -> int32_t
 
                 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
                 model = glm::scale(model, glm::vec3(card_scale, card_scale, 1.0f));
+
+                // TODO clean the states
+                // TODO update the color in a more simple way
 
                 if (card.turning)
                 {
